@@ -1,76 +1,69 @@
-using System.Collections;
-using System.Collections.Generic;
+using System;
+using System.IO;
 using UnityEngine;
-using UnityEngine.SceneManagement;
-using UnityEngine.UI;
 
 public class MainManager : MonoBehaviour
 {
-    public Brick BrickPrefab;
-    public int LineCount = 6;
-    public Rigidbody Ball;
+    public static MainManager instance;
+    public string playerName;
+    public string BestplayerName;
+    public int Score;
+    public int BestScore;
 
-    public Text ScoreText;
-    public GameObject GameOverText;
-    
-    private bool m_Started = false;
-    private int m_Points;
-    
-    private bool m_GameOver = false;
-
-    
-    // Start is called before the first frame update
-    void Start()
+    [Serializable]
+    public class GameData
     {
-        const float step = 0.6f;
-        int perLine = Mathf.FloorToInt(4.0f / step);
-        
-        int[] pointCountArray = new [] {1,1,2,2,5,5};
-        for (int i = 0; i < LineCount; ++i)
-        {
-            for (int x = 0; x < perLine; ++x)
-            {
-                Vector3 position = new Vector3(-1.5f + step * x, 2.5f + i * 0.3f, 0);
-                var brick = Instantiate(BrickPrefab, position, Quaternion.identity);
-                brick.PointValue = pointCountArray[i];
-                brick.onDestroyed.AddListener(AddPoint);
-            }
-        }
+        public string playerName = "";
+        public string BestplayerName = "";
+        public int Score = 0;
+        public int BestScore = 0;
+    }
+    private void Awake()
+    {
+        if (instance != null) { Destroy(gameObject); return; }
+        instance = this;
+        DontDestroyOnLoad(gameObject);
+
+        LoadData();
     }
 
-    private void Update()
+    public void SaveData(string path = null)
     {
-        if (!m_Started)
-        {
-            if (Input.GetKeyDown(KeyCode.Space))
-            {
-                m_Started = true;
-                float randomDirection = Random.Range(-1.0f, 1.0f);
-                Vector3 forceDir = new Vector3(randomDirection, 1, 0);
-                forceDir.Normalize();
+        path ??= Application.persistentDataPath + "/defaultsavedata.json";
 
-                Ball.transform.SetParent(null);
-                Ball.AddForce(forceDir * 2.0f, ForceMode.VelocityChange);
-            }
-        }
-        else if (m_GameOver)
+        GameData data = new GameData();
+        data.playerName = playerName;
+        data.BestplayerName = BestplayerName;
+        data.Score = Score;
+        data.BestScore = BestScore;
+
+        string json = JsonUtility.ToJson(data);
+        File.WriteAllText(path, json);
+    }
+    public void LoadData(string path = null)
+    {
+        path ??= Application.persistentDataPath + "/defaultsavedata.json";
+
+        if(File.Exists(path))
         {
-            if (Input.GetKeyDown(KeyCode.Space))
-            {
-                SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
-            }
+            string json = File.ReadAllText(path);
+            GameData data = JsonUtility.FromJson<GameData>(json);
+
+            BestScore = data.BestScore;
+            BestplayerName = data.BestplayerName;
         }
     }
-
-    void AddPoint(int point)
+    public void ResetData(string path = null)
     {
-        m_Points += point;
-        ScoreText.text = $"Score : {m_Points}";
+        BestplayerName = "";
+        BestScore = 0;
+        SaveData();
     }
-
-    public void GameOver()
+    public void QuitGame()
     {
-        m_GameOver = true;
-        GameOverText.SetActive(true);
+        Application.Quit();
+#if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPaused = false;
+#endif
     }
 }
