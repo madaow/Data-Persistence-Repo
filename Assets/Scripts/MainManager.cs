@@ -18,6 +18,10 @@ public class MainManager : MonoBehaviour
         public int Score = 0;
         public int BestScore = 0;
     }
+
+    private const string WebGLKey = "defaultsavedata_json";
+    private static string DefaultPath => Application.persistentDataPath + "/defaultsavedata.json";
+
     private void Awake()
     {
         if (instance != null) { Destroy(gameObject); return; }
@@ -29,41 +33,59 @@ public class MainManager : MonoBehaviour
 
     public void SaveData(string path = null)
     {
-        path ??= Application.persistentDataPath + "/defaultsavedata.json";
-
-        GameData data = new GameData();
-        data.playerName = playerName;
-        data.BestplayerName = BestplayerName;
-        data.Score = Score;
-        data.BestScore = BestScore;
+        var data = new GameData
+        {
+            playerName = playerName,
+            BestplayerName = BestplayerName,
+            Score = Score,
+            BestScore = BestScore
+        };
 
         string json = JsonUtility.ToJson(data);
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+        // WebGL: ブラウザストレージへ
+        PlayerPrefs.SetString(WebGLKey, json);
+        PlayerPrefs.Save(); // これ重要
+#else
+        // Standalone/Editor: ファイルへ
+        path ??= DefaultPath;
         File.WriteAllText(path, json);
+#endif
     }
+
     public void LoadData(string path = null)
     {
-        path ??= Application.persistentDataPath + "/defaultsavedata.json";
+#if UNITY_WEBGL && !UNITY_EDITOR
+        if (!PlayerPrefs.HasKey(WebGLKey)) return;
 
-        if(File.Exists(path))
-        {
-            string json = File.ReadAllText(path);
-            GameData data = JsonUtility.FromJson<GameData>(json);
+        string json = PlayerPrefs.GetString(WebGLKey, "");
+        if (string.IsNullOrEmpty(json)) return;
 
-            BestScore = data.BestScore;
-            BestplayerName = data.BestplayerName;
-        }
+        GameData data = JsonUtility.FromJson<GameData>(json);
+        BestScore = data.BestScore;
+        BestplayerName = data.BestplayerName;
+#else
+        path ??= DefaultPath;
+        if (!File.Exists(path)) return;
+
+        string json = File.ReadAllText(path);
+        GameData data = JsonUtility.FromJson<GameData>(json);
+        BestScore = data.BestScore;
+        BestplayerName = data.BestplayerName;
+#endif
     }
+
     public void ResetData(string path = null)
     {
         BestplayerName = "";
         BestScore = 0;
-        SaveData();
-    }
-    public void QuitGame()
-    {
-        Application.Quit();
-#if UNITY_EDITOR
-        UnityEditor.EditorApplication.isPaused = false;
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+        PlayerPrefs.DeleteKey(WebGLKey);
+        PlayerPrefs.Save();
+#else
+        SaveData(path);
 #endif
     }
 }

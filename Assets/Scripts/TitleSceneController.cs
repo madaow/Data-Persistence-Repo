@@ -1,6 +1,5 @@
 using System.Collections;
 using TMPro;
-using UnityEditor.SearchService;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -28,7 +27,7 @@ public class TitleSceneController : MonoBehaviour
     }
     private void Update()
     {
-        if(Input.GetKeyDown(KeyCode.L) && Input.GetKey(KeyCode.LeftControl)) { MainManager.instance.ResetData(); Debug.Log("ResetData!"); }
+        if(Input.GetKeyDown(KeyCode.L) && Input.GetKey(KeyCode.K)) { MainManager.instance.ResetData(); Debug.Log("ResetData!"); }
     }
     public void StartButtonClicked()
     {
